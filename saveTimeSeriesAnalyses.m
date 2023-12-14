@@ -1,0 +1,99 @@
+function [] = saveTimeSeriesAnalyses(Information)
+
+% creating the name of the path
+if Information.subject_info.species == 'H'
+    if isfield(Information.subject_info, 'drug')
+       pref = '';
+    else
+       pref = 'S';
+    end
+    name = sprintf('%01d',Information.subject_info.name);
+else
+    pref = '';  
+    name = Information.subject_info.name;
+end
+
+if isfield(Information.subject_info, 'drug'), state = Information.subject_info.condition;
+elseif Information.subject_info.condition == "Sed", state = 'Sedated';
+elseif Information.subject_info.condition == "Sleep", state = 'Sleep';
+else, state = 'Awake'; 
+end
+
+if isfield(Information.subject_info, 'drug')
+    subdir = strcat(Information.subject_info.drug,'/');
+else, subdir = ''; 
+end
+
+path = strcat('Results_psychedelics_all_redfun/', subdir, pref, name, '_c', ...
+              sprintf('%01d',Information.parameters.channels), '/', state, '/');
+if not(isfolder(path)), mkdir(path); end
+
+for r = 1:length(Information.parameters.Red_fun)
+    if Information.parameters.Red_fun(r) == 'y'
+        final_path = path+Information.parameters.fun(r)+'/';
+        if not(isfolder(final_path)), mkdir(final_path); end
+
+        T = table(Information.Red{r,1}', Information.Red{r,2}', Information.Syn{r,1}', Information.Syn{r,2}', ...
+                  Information.UnX{r,1}', Information.UnX{r,2}', Information.UnY{r,1}', Information.UnY{r,2}', ...
+                  'VariableNames', ["Redundancy VAR(1)", "Redundancy VAR(p)", ...
+                  "Synergy VAR(1)", "Synergy VAR(p)", "Unique information X VAR(1)", ...
+                  "Unique information X VAR(p)", "Unique information Y VAR(1)", ...
+                  "Unique information Y VAR(p)"] );
+        
+        writetable(T, final_path+'data.txt','Delimiter','\t');
+        
+        % save some parameters
+        fileID = fopen(final_path + 'summary.txt','w');
+        fprintf(fileID,'%s \t %s \t %s \t %s \t %s \t %s \n',...
+                'channels', 'epochs', 'max model order', 'N. runs', 'target', 'Redundancy');
+        sum = [Information.parameters.channels, Information.parameters.epochs, ...
+               Information.parameters.mmorder, Information.parameters.runs];
+        fprintf(fileID,'%d \t %d \t %d \t %d \t %s \t %s \n', sum, "joint", Information.parameters.fun(r));
+        fclose(fileID);
+        
+        if Information.subject_info.species == 'H' && ...
+           isfield(Information.subject_info, 'drug')
+            fileID = fopen(final_path + 'ID.txt','w');
+            fprintf(fileID,'%s \t %s \t %s \t %s \t \n','ID', 'Subject', 'Drug', 'Condition');
+            sum = [Information.subject_info.ID, name, ...
+                   Information.subject_info.drug, Information.subject_info.condition];
+            fprintf(fileID,'%s \t %s \t %s \t %s \n', sum);
+            fclose(fileID);
+        elseif Information.subject_info.species == 'H' && ...
+           Information.subject_info.condition == 'S'
+            fileID = fopen(final_path + 'ID.txt','w');
+            fprintf(fileID,'%s \t %s \t %s \t %s \t \n','ID', 'Subject', 'Nights', 'Awakening');
+            sum = [Information.subject_info.ID, Information.subject_info.name, ...
+                   Information.subject_info.Nights, Information.subject_info.Awakenings];
+            fprintf(fileID,'%d \t %d \t %d \t %d \n', sum);
+            fclose(fileID);
+        end
+
+    end
+end
+
+% save CSER, Total Correlation, O-Information, S-information, 
+% Residual Correlation, phi_WMS, phi_R
+T = table(Information.CSER{1}', Information.CSER{2}', Information.TC{1}', ...
+          Information.TC{2}', Information.Oinfo{1}', Information.Oinfo{2}', ...
+          Information.mord_hist{1}', Information.mord_hist{2}', ... 
+          Information.Sinfo{1}', Information.Sinfo{2}', Information.corr{1}', ...
+          Information.corr{2}', Information.phi_WMS', Information.phi_R', ...
+          'VariableNames', ["CSER Var(1)", "CSER Var(p)", ...
+          "Tot Corr Var(1)", "Tot Corr Var(p)", "O info Var(1)", ...
+          "O info Var(p)", "Model Order Var(1)", "Model Order Var(p)", ...
+          "S info Var(1)", "S info Var(p)", "Residual Corr Var(1)", ...
+          "Residual Corr Var(p)", "phi_WMS", "phi_R"] );
+
+writetable(T, strcat(path,'InfoDyn.txt'),'Delimiter','\t');
+
+% save normalised Total Correlation and O-Information
+T = table(Information.TC_norm{1}', Information.TC_norm{2}', ...
+          Information.Oinfo_norm{1}', Information.Oinfo_norm{2}', ...
+          'VariableNames', ["Tot Corr Norm Var(1)", "Tot Corr Norm Var(p)", ...
+          "O info Norm Var(1)", "O info Norm Var(p)"] );
+
+writetable(T, strcat(path,'InfoDyn_Norm.txt'),'Delimiter','\t');
+
+
+end

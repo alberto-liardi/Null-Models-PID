@@ -1,0 +1,37 @@
+
+
+figure();
+histogram(MI_pl,50);
+hold on
+histogram(MI,50);
+legend("Placebo","Drug");
+title("MI");
+
+figure();
+histogram(Red_pl,50);
+hold on
+histogram(Red,50);
+legend("Placebo","Drug");
+title("Red");
+
+figure();
+histogram(Syn_pl,50);
+hold on
+histogram(Syn,50);
+legend("Placebo","Drug");
+title("Syn");
+
+figure();
+histogram(UnX_pl,50);
+hold on
+histogram(UnX_pl,50);
+legend("Placebo","Drug");
+title("UnX");
+
+figure();
+histogram(UnY_pl,50);
+hold on
+histogram(UnY_pl,50);
+legend("Placebo","Drug");
+title("UnY");
+

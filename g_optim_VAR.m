@@ -1,0 +1,387 @@
+rng('default') % for reproducibility of random variables
+disp("begin run");
+
+% choose task to create the appropriate graph
+% task = "single";
+task = "average";
+
+if task=="average"
+    MI_start = 1e-4;    
+    MI_end = 4;
+    n_MI = 100;
+    n_sample = 1e4;
+else, error("Input a correct task"); 
+end
+
+% Log-spacing Mutual Information in MI_list
+MI_list = logspace(log10(MI_start),log10(MI_end),n_MI);
+% MI_list = 0.1:0.2:1;
+
+% vectors containing number of sources S, targets T 
+% Sources = [2 4 4 8 8 20 20]; 
+% Sources = [8];
+% Sources = [2 4 8 20];
+S = 2;
+
+% number of steps in the past p
+p = 1;
+
+Synergies = []; MI = []; gs = [];
+fig = figure();
+
+for j = 1:10
+    Synergies = []; MI = []; gs = [];
+
+    % linear coefficients
+    A = cell(1,p);
+    for h = 1:p
+        B = normrnd(0,1,S,S);
+        A{h} = B/sum(abs(eig(B)));
+        %   g = rand(1)*sum(abs(eig(B)))/max(abs(eig(B)));
+        %   A{h} = g*A{h};
+    end
+    A = horzcat(A{:});
+    
+    % target conditional covariance
+    V = wishrnd(eye(S),S+1);
+    
+    for g = 0.01:0.01:1
+        PID = PIDcalc_Mult(p,{g*A},V,S/2,S/2,"joint",['y','n','n']);
+        Synergies(end+1) = PID(1,4);
+        MI(end+1) = sum(PID(1,:));
+        gs(end+1) = g;
+    end
+    
+    % [MI, ind] = sort(MI); Synergies = Synergies(ind);
+    [gs, ind] = sort(gs); MI = MI(ind);
+    
+    plot(gs, MI);
+    hold on
+
+end
+
+title("VAR MI over g",'FontSize',15,'interpreter','latex');
+ylabel("MI");
+xlabel("g");
+legend('Location', 'Northwest');
+
+%%
+S = 2;
+
+% number of steps in the past p
+p = 1;
+
+Synergies = []; MI = []; gs = []; eigs = [];
+figure(1);
+figure(2);
+
+for j = 1:10
+    Synergies = []; MI = []; gs = []; eigs = [];
+
+    % linear coefficients
+    A = cell(1,p);
+    for h = 1:p
+        B = normrnd(0,1,S,S);
+        A{h} = B/sum(abs(eig(B)));
+        g_max = sum(abs(eig(B)))/max(abs(eig(B)));
+    end
+    A = horzcat(A{:});
+    
+    % target conditional covariance
+    V = wishrnd(eye(S),S+1);
+    
+    for g = 0.000001:g_max/100:g_max
+        PID = PIDcalc_Mult(p,{g*A},V,S/2,S/2,"joint",['y','n','n']);
+        Synergies(end+1) = PID(1,4);
+        MI(end+1) = sum(PID(1,:));
+        gs(end+1) = g;
+        eigs(end+1) = max(abs(eig(g*A)));
+    end
+    
+    % [MI, ind] = sort(MI); Synergies = Synergies(ind);
+%     [gs, ind] = sort(gs); MI = MI(ind);
+%     [eigs, ind] = sort(eigs); MI = MI(ind);
+    
+    figure(1);
+    plot(eigs, MI);
+    hold on
+
+    figure(2);
+    plot(gs, MI);
+    hold on
+
+end
+
+figure(1);
+title("VAR MI over eigenvalues",'FontSize',15,'interpreter','latex');
+ylabel("MI");
+xlabel("eigenvalues");
+legend('Location', 'Northwest');
+
+figure(2);
+title("VAR MI over g",'FontSize',15,'interpreter','latex');
+ylabel("MI");
+xlabel("g");
+legend('Location', 'Northwest');
+
+%% 
+S = 2;
+
+% number of steps in the past p
+p = 1;
+
+Synergies = []; MI = []; gs = [];
+fig = figure();
+
+for j = 1:10e5
+    % linear coefficients
+    A = cell(1,p);
+    for h = 1:p
+        B = normrnd(0,1,S,S);
+        A{h} = B/sum(abs(eig(B)));
+        g = rand(1)*sum(abs(eig(B)))/max(abs(eig(B)));
+        A{h} = g*A{h};
+    end
+    A = horzcat(A{:});
+    
+    % target conditional covariance
+    V = wishrnd(eye(S),S+1);
+
+    PID = PIDcalc_Mult(p,{A},V,S/2,S/2,"joint",['y','n','n']);
+    Synergies(end+1) = PID(1,4);
+    MI(end+1) = sum(PID(1,:));
+
+end
+
+%%
+Synergies_mm = movmean(Synergies, 100);
+
+mask = logical(MI<4);
+red_MI = MI(mask);
+red_Synergies = Synergies_mm(1:length(red_MI));
+
+fig = figure();
+plot(red_MI, red_Synergies);
+hold on
+c = polyfit(red_MI,red_Synergies,2);    
+plot(red_MI, polyval(c,red_MI));
+% fplot(@(x) x, [min(MI), max(MI)]);
+title("VAR Synergies vs MI",'FontSize',15,'interpreter','latex');
+ylabel("Synergy");
+xlabel("MI");
+save = "Results/Wishart_joint/VAR_av_fit.png";
+exportgraphics(fig,save,'Resolution',300);
+
+%% TRYING THE OPTIMISATION FOR THE VAR MODEL
+rng('default') % for reproducibility of random variables
+disp("begin run");
+
+task = "average";
+
+MI_start = 1e-4;    
+MI_end = 4;
+n_MI = 100;
+n_sample = 1e4;
+
+S = 8; p = 1;
+opts = optimset('display', 'none');
+cc = 0; 
+C = cell(1,p);
+
+% initial conditions for the optimisation
+x0 = [1 2 0 5 10 20 50];
+
+MI_list = logspace(log10(MI_start),log10(MI_end),n_MI);
+Syn = NaN(length(MI_list),n_sample);
+
+for i = 1:length(MI_list)
+
+    if(mod(i,5)==0), disp(i); end
+    I = MI_list(i);
+
+    for j = 1:n_sample
+        % sample the matrices
+        % NB. for Wishart degrees of freedom must be > size - 1
+        
+        % random VAR matrix
+        A = var_rand(S,p,rand(1));
+%         while ~varA_check(A)
+%             disp("not working well");
+%             A = var_rand(S,p,rand(1));
+        while any(abs(A(:))<1e-18)
+            A = var_rand(S,p,rand(1));
+        end
+        
+        % target conditional covariance
+        V = wishrnd(eye(S),S+1);
+        
+        % find g such that mutual information is MI_tot
+        l = 1;
+        [g, ~, code] = fzero(@(x) fun(x,p,A,V,I), x0(l), opts);
+          
+        while( code ~= 1 && l+1 <= length(x0) )
+            l = l+1;
+            [g, ~, code] = fzero(@(x) fun(x,p,A,V,I), x0(l), opts);
+        end
+        if( code ~= 1 ), cc = cc+1; continue; end 
+
+        % now do one more calculation
+        g = Sigmoid(g,1);
+        [B,~] = specnorm(A,g);
+        for s = 1:p
+            C{s} = B(:,:,s);
+        end
+        G = var_to_autocov(B,V,p);
+        [PID, Gamma] = PIDcalc_Mult(p,C,V,S/2,S/2,"joint",['y','n','n']);
+        
+        if(abs(sum(PID(1,:))-I)>1e-7), cc=cc+1; continue; end
+%         assert(abs(sum(PID(1,:))-I)<1e-7, "problem with MI");
+%         if(j==74), assert(0==1); end % for p = 4
+
+        Syn(i,j) = PID(1,4);
+        PIDcheck(PID);
+        assert(isreal(Syn), "not real");
+
+    end
+end
+
+ID = "S" + sprintf('%01d',S) + "p" + sprintf('%01d',p);
+fprintf("done "+ ID+"\n");
+
+if task=="single", single_wat(MI_list, num_bin, Syn, ID);
+elseif task=="average", aver_plot(MI_list, Syn, ID);
+end
+
+file_write(ID, n_sample, MI_list, Syn, task);
+
+disp(cc)
+disp("done all!");
+
+
+%% READ DATA AND COMPARE AVERAGES
+
+cmap = colormap(jet);
+IDs = ["S2p1", "S2p3", "S2p5", "v2S4p1", "S8p1"];
+Syn = cell(1,length(IDs));
+averages = cell(1,length(IDs));
+MIs = cell(1,length(IDs));
+
+for i = 1:length(IDs)
+    Syn{i} = readmatrix("Results/Wishart_joint/"+IDs(i)+"/data_av.txt");
+    tab = readtable("Results/Wishart_joint/"+IDs(i)+"/sum_av.txt");
+%     linenum = 2;
+%     C = textscan(fid,'%s',1,'delimiter','\t', 'headerlines',linenum-1);
+    MI0 = tab.InitialMI; MI1 = tab.FinalMI; MIn = tab.NumberOfMI;
+    MIs{i} = logspace(log10(MI0), log10(MI1), MIn);
+    averages{i} = mean(Syn{i},2,'omitnan');
+end
+
+fig = figure();
+for i = 1:length(IDs)
+    plot(MIs{i}, averages{i}, 'LineWidth', 1);
+    hold on
+end
+title("Wishart synergy averages comparison",'FontSize',15,'interpreter','latex');
+ylabel("Synergy averages");
+xlabel("Mutual Information");
+legend(IDs, 'Location','northwest');
+save = "Results/Wishart_joint/All_averages.png";
+exportgraphics(fig,save,'Resolution',300);
+
+
+
+function [] = single_wat(MI_list, num_bin, Synergies, ID)
+    X = zeros(length(MI_list),num_bin);
+    Y = zeros(length(MI_list),num_bin);
+    for j = 1:length(MI_list)
+        Y(j,:) = MI_list(j);
+    end
+    Z = zeros(length(MI_list),num_bin);
+    
+    for i = 1:length(MI_list)
+        
+        [NN,edges] = histcounts(Synergies(i,:), num_bin);
+        NN = NN./sum(NN);              % normalise w.r.t. N_tot
+        centers = movmean(edges,2);
+        X(i,:) = centers(2:end);
+        Z(i,:) = NN;
+    
+    end
+    
+    % waterfall
+    fig = figure();
+    waterfall(X,Y,Z);
+    xlabel('Synergy');
+    ylabel("Mutual Information");
+    zlabel("Counts");
+    title("Wishart synergy waterfall "+ID,'FontSize',15,'interpreter','latex');
+    save = "Results/Wishart_joint/Single_waterfall"+ID+".png";
+    exportgraphics(fig,save,'Resolution',300);
+
+end
+
+function [] = aver_plot(MI_list, Synergies, ID)
+    
+    % calculate and plot means
+    averages = mean(Synergies,2,'omitnan'); 
+
+    fig = figure();
+
+    plot(MI_list, averages, 'LineWidth',1);
+    hold on
+    b = polyfit(MI_list,averages,1);
+    plot(MI_list, polyval(b,MI_list));
+    hold on
+    c = polyfit(MI_list,averages,2);    
+    plot(MI_list, polyval(c,MI_list));
+
+    title("Wishart VAR synergy averages "+ID,'FontSize',15,'interpreter','latex');
+    ylabel("Synergy averages");
+    xlabel("Mutual Information");
+    legend("average","linear fit","quadratic fit");
+    save = "Results/Wishart_joint/Averages_"+ID+".png";
+    exportgraphics(fig,save,'Resolution',300);
+
+end
+
+function [] = file_write(ID, n_sample, MI_list, Synergies, task)
+
+    if task=="single", tsk = "sin";
+    elseif task=="average", tsk = "av";
+    end
+
+    path = "Results/Wishart_joint/"+ID;
+    if not(isfolder(path)), mkdir(path); end
+
+    name = path+"/sum_"+tsk+".txt";
+    fileID = fopen(name,'w');
+    fprintf(fileID,'%s \t %s \t %s \t %s \t %s \n',...
+            'Initial MI', 'Final MI', 'Number of MI', 'Number of samplings', 'ID');
+    sum = [MI_list(1), MI_list(end), length(MI_list), n_sample];
+    fprintf(fileID,'%d \t %d \t %d \t %d \t %s \n \n', sum, ID);
+
+    name = path+"/data_"+tsk+".txt";
+    writematrix(Synergies,name);
+
+end
+
+function y = fun(x,p,A,V,I)
+
+    x = Sigmoid(x,1);
+    [B,~] = specnorm(A,x);
+    G = var_to_autocov(B,V,0);
+    MI = (0.5*log(det(G(:,:,1)))-0.5*log(det(V)))/log(2);
+%     MI, x
+%     B, G
+    if ~isreal(MI)
+        error("error in optimising the g!");
+    end
+    y = MI-I;
+
+end
+
+function y = Sigmoid(x,M)
+    
+    y = M/(1+exp(-x));
+
+end

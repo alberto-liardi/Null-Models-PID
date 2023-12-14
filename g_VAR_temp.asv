@@ -1,0 +1,85 @@
+rng('default') % for reproducibility of random variables
+disp("begin run");
+
+sympref('FloatingPointOutput', true)
+syms g
+
+S = 2;
+p = 1;
+
+% linear coefficients
+A = cell(1,p);
+for h = 1:p
+    B = normrnd(0,1,S,S);
+    A{h} = B/sum(abs(eig(B)));
+end
+A = horzcat(A{:});
+
+% target conditional covariance
+Sigma_u = wishrnd(eye(S),S+2);
+
+V = g*Sigma_u;
+
+disp(Sigma_u);
+disp(V*[1,0;0,1])
+
+% now do the unpack of the gamma matrices, construct sigma_S, T and full
+% then write the (simbolic) equation with MI = 0.5 log det ... + ... - ...
+% now trasform it to matlab function and proceed with optimisation 
+
+
+%PID = PIDcalc_Mult(p,{A},V,S/2,S/2,"joint",['y','y','n']);
+
+%disp(PID);
+
+Gamma = sym('G', [3,3]);	% positive definite symmetric matrix
+% make it symmetric
+P = tril(P.') + triu(P,1);
+
+disp(P);
+
+disp(double(P));
+
+symA = sym(A);
+
+%% g*Sigma_u doesn't change MI!
+
+for g=1:2:10
+   g=1000;
+   disp(g);
+   V = g*Sigma_u;
+   PID = PIDcalc_Mult(p,{A},V,S/2,S/2,"joint",['y','n','n']);
+
+end
+
+%% 
+
+for g=1:2:10
+   disp(g);
+   B = g*A;
+   disp(eig(B));
+   PID = PIDcalc_Mult(p,{B},Sigma_u,S/2,S/2,"joint",['y','n','n']);
+
+end
+
+%% 
+S = 2;
+p = 1;
+
+% linear coefficients
+A = cell(1,p);
+for h = 1:p
+    B = normrnd(0,1,S,S);
+    A{h} = B/sum(abs(eig(B)));
+end
+A = horzcat(A{:});
+syms g;
+disp(eig(A))
+% target conditional covariance
+Sigma_u = wishrnd(eye(S),S+2);
+B = 1.2*A;
+disp(eig(B));
+PID = PIDcalc_Mult(p,{B},Sigma_u,S/2,S/2,"joint",['y','n','n']);
+
+
+

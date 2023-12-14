@@ -1,0 +1,173 @@
+rng('default') % for reproducibility of random variables
+javaaddpath("infodynamics.jar");
+
+disp(" "); disp("---- Start of compilation ----"); disp(" ");
+% subjects = {"Kin2", "George", "Su", "Chibi", 2, 4, 5, 8, 11, 12, 13, 15, 16};
+% species = ['M', 'M', 'M', 'M', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H'];
+
+
+if ~exist('Info',     'var')
+
+    subjects = {"Kin2"}; species = ['M']; 
+    channels = 2;     conditions = ['S', 'W'];
+    
+    % subjects = {4}; conditions = ['S', 'W']; species = ['H'];
+    
+    Info = {};
+    
+    for sub = 1:length(subjects)
+        subject_info.species = species(sub);
+        subject_info.name = subjects{sub};
+    
+        for cond = 1:length(conditions)
+            subject_info.condition = conditions(cond);
+    
+            parameters = struct('channels', channels, 'runs', 100);
+            
+            Info{end+1} = Analyse(subject_info, parameters);
+    
+        end
+    end
+end
+% V study 
+
+% 1 == Sleep
+% 2 == Awake
+up_dx = cell(1,2);
+up_sx = cell(1,2);
+down_dx = cell(1,2);
+
+for l = 1:2
+    for v = 1:length(Info{l}.V)
+        up_sx{l}(end+1) = Info{l}.V{v}(1,1);
+        up_dx{l}(end+1) = Info{l}.V{v}(1,2);
+        down_dx{l}(end+1) = Info{l}.V{v}(2,2);
+    end
+end
+
+x = 1:length(Info{l}.V);
+
+%%%%%%%%%%%%%%%%%%%%%%%
+%
+%      The matrix is
+%       (  a   b  )
+%       (  c   d  )
+%
+%%%%%%%%%%%%%%%%%%%%%%%
+                        
+
+figure();
+plot(x,up_sx{2}, '-red',x,up_sx{1},'--red', ...
+     x,up_dx{2},'-blue',x,up_dx{1},'--blue', ...
+     x,down_dx{2},'-green',x, down_dx{1},'--green');
+title("covariance matrix");
+legend("a W","a S","b W", "b S", "d W","d S");
+
+figure();
+plot(x, Info{2}.corr{1}, x, Info{1}.corr{1});
+title("correlation degree");
+legend("W", "S");
+
+% taking averages: 
+up_dx_m = cell(1,2);
+up_sx_m = cell(1,2);
+down_dx_m = cell(1,2);
+
+for l = 1:2
+    up_sx_m{l} = mean(up_sx{l});
+    up_dx_m{l} = mean(up_dx{l});
+    down_dx_m{l} = mean(down_dx{l});
+end
+
+Cov_W = [up_sx_m{2} up_dx_m{2} ; up_dx_m{2} down_dx_m{2}];
+Cov_S = [up_sx_m{1} up_dx_m{1} ; up_dx_m{1} down_dx_m{1}];
+
+path = "Results/Minimal_Example_Real/";
+save(path+"Cov_W", 'Cov_W');
+save(path+"Cov_S", 'Cov_S');
+
+%% A study
+
+% 1 == Sleep
+% 2 == Awake
+up_dx = cell(1,2);
+up_sx = cell(1,2);
+down_dx = cell(1,2);
+down_sx = cell(1,2);
+
+for l = 1:2
+    for v = 1:length(Info{l}.A)
+        up_sx{l}(end+1) = Info{l}.A{v}(1,1);
+        up_dx{l}(end+1) = Info{l}.A{v}(1,2);
+        down_dx{l}(end+1) = Info{l}.A{v}(2,2);
+        down_sx{l}(end+1) = Info{l}.A{v}(2,1);
+    end
+end
+
+x = 1:length(Info{l}.A);
+
+%%%%%%%%%%%%%%%%%%%%%%%
+%
+%      The matrix is
+%       (  a   b  )
+%       (  c   d  )
+%
+%%%%%%%%%%%%%%%%%%%%%%%
+                        
+
+figure();
+plot(x,up_sx{2}, '-red',x,up_sx{1},'--red', ...
+     x,up_dx{2},'-blue',x,up_dx{1},'--blue', ...
+     x,down_sx{2},'-magenta',x,down_sx{1},'--magenta', ...
+     x,down_dx{2},'-green',x, down_dx{1},'--green');
+title("evolution matrix");
+legend("a W","a S","b W", "b S", "d W","d S""d W","d S");
+
+% taking averages: 
+up_dx_m = cell(1,2);
+up_sx_m = cell(1,2);
+down_dx_m = cell(1,2);
+down_sx_m = cell(1,2);
+
+for l = 1:2
+    up_sx_m{l} = mean(up_sx{l});
+    up_dx_m{l} = mean(up_dx{l});
+    down_dx_m{l} = mean(down_dx{l});
+    down_sx_m{l} = mean(down_sx{l});
+end
+
+A_W = [up_sx_m{2} up_dx_m{2} ; down_sx_m{2} down_dx_m{2}];
+A_S = [up_sx_m{1} up_dx_m{1} ; down_sx_m{1} down_dx_m{1}];
+
+path = "Results/Minimal_Example_Real/";
+save(path+"A_W", 'A_W');
+save(path+"A_S", 'A_S');
+
+disp(" "); disp("---- End of compilation ----"); disp(" ");
+
+function [Information] = Analyse(subject_info, parameters)
+
+% loading data (if necessary)
+if exist('data',     'var') == 0
+    disp("Loading data...");
+
+    if subject_info.species == 'M'
+        % !!! IMPORTANT: Monkey data must be in a folder called "Monkeys_data"
+        data = KTMDLoader(subject_info.name, subject_info.condition, "Monkeys_data");
+        subject_info.fs = 1000;
+
+    elseif subject_info.species == 'H'
+        % !!! IMPORTANT: Human data must be in a folder called "ValdasPreprocessed"
+        [data, subject_info] = ValdasLoad(subject_info);
+
+    end
+    disp("... done.");
+end
+
+% start the timer
+t0 = tic();
+
+% running analyses
+Information = TimeSeriesAnalyses(data, subject_info, parameters);
+
+end

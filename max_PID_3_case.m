@@ -1,0 +1,225 @@
+%% MAXIMUM REDUNDANCY SYSTEM
+% X=Y+small white noise
+% Therefore Unique = 0; Redundancy = MIx = MIy, Syn = MI-Red
+
+rng('default') % for reproducibility of random variables
+disp("begin run");
+
+S = 2; T = 1;
+UnX = NaN(1,3); UnY = NaN(1,3); Red = NaN(1,3); Syn = NaN(1,3);
+
+Sigma_cross = [0.9,0.9];
+eps = 0.00001;
+Sigma_s = [1, 1-eps; 1-eps, 1];
+Sigma_t = 1;
+Sigma_full = [Sigma_s, Sigma_cross'; Sigma_cross, Sigma_t];
+
+chol(Sigma_s); chol(Sigma_full);
+
+MI = entropy(Sigma_s) + entropy(Sigma_t) - entropy(Sigma_full);
+
+% MMI
+[UnX(1), UnY(1), Red(1), Syn(1)] = PID_MMI_Gaussian(Sigma_full,S,T);
+% Idep
+[UnX(2), UnY(2), Red(2), Syn(2)] = PID_Idep_Gaussian(Sigma_full,S,T);
+% Iccs 
+[UnX(3), UnY(3), Red(3), Syn(3)] = PID_Iccs_Gaussian(Sigma_full,S,T);
+
+null_PIDs = MI_null_model_Gauss(MI,[],[],10000,"all");
+
+fig = figure('units','normalized','outerposition',[0 0 1 1]);
+for n=1:3
+    if n==1, red_fun="MMI";
+    elseif n==2, red_fun="Idep";
+    elseif n==3, red_fun="Iccs";
+    end
+
+    null_Reds = null_PIDs(3,:,n);
+%     null_Syns = null_PIDs(4,:,n);
+%     null_Uns = null_PIDs(1,:,n) + null_PIDs(2,:,n);
+
+    if n~=3, m=n; else, m=n+0.5; end
+    
+    subplot(2,2,m);
+    histogram(null_Reds, 20);
+    hold on
+    xline(Red(n),'--', 'LineWidth', 2, 'Color', 'black');
+    xlabel('Redundancies');
+    ylabel('Counts');
+    title("Redundancy distribution for MI = "+num2str(MI)+" "+red_fun);
+    legend('Red', "MAX = "+sprintf('%.2f',Red(n)));
+
+    quantPID = comp_quantile(null_PIDs(:,:,n), [UnX(n),UnY(n),Red(n),Syn(n)]');
+    disp(red_fun); disp(quantPID);
+end
+
+
+% exportgraphics(fig,"Results_null_model/Synthetic/Gaussian/max_red.pdf",'Resolution',300);
+
+% figure();
+% histogram(null_Syns);
+% hold on
+% xline(Red,'--', 'LineWidth', 2, 'Color', 'black');
+% title("Synergy")
+% 
+% figure();
+% histogram(null_Uns);
+% hold on
+% xline(Red,'--', 'LineWidth', 2, 'Color', 'black');
+% title("Unique");
+
+
+
+disp("end of execution");
+
+
+%% MAXIMUM UNIQUE SYSTEM
+
+rng('default') % for reproducibility of random variables
+disp("begin run");
+
+S = 2; T = 1;
+UnX = NaN(1,3); UnY = NaN(1,3); Red = NaN(1,3); Syn = NaN(1,3);
+
+eps = 0.0001;
+Sigma_s = [1, eps; eps, 1];
+Sigma_t = 1;
+Sigma_cross = [0.9,eps];
+Sigma_full = [Sigma_s, Sigma_cross'; Sigma_cross, Sigma_t];
+
+MI = entropy(Sigma_s) + entropy(Sigma_t) - entropy(Sigma_full);
+
+chol(Sigma_s); chol(Sigma_full);
+
+% MMI
+[UnX(1), UnY(1), Red(1), Syn(1)] = PID_MMI_Gaussian(Sigma_full,S,T);
+% Idep
+[UnX(2), UnY(2), Red(2), Syn(2)] = PID_Idep_Gaussian(Sigma_full,S,T);
+% Iccs 
+[UnX(3), UnY(3), Red(3), Syn(3)] = PID_Iccs_Gaussian(Sigma_full,S,T);
+
+null_PIDs = MI_null_model_Gauss(MI,[],[],10000,"all");
+
+fig = figure('units','normalized','outerposition',[0 0 1 1]);
+for n=1:3
+    if n==1, red_fun="MMI";
+    elseif n==2, red_fun="Idep";
+    elseif n==3, red_fun="Iccs";
+    end
+
+%     null_Reds = null_PIDs(3,:,n);
+%     null_Syns = null_PIDs(4,:,n);
+    null_Uns = null_PIDs(1,:,n) + null_PIDs(2,:,n);
+
+    Un = UnX(n)+UnY(n);
+
+    if n~=3, m=n; else, m=n+0.5; end
+    
+    subplot(2,2,m);
+    histogram(null_Uns,20);
+    hold on
+    xline(Un(n),'--', 'LineWidth', 2, 'Color', 'black');
+    xlabel('Unique');
+    ylabel('Counts');
+    title("Unique distribution for MI = "+num2str(MI)+" "+red_fun);
+    legend('Un', "MAX = "+sprintf('%.2f',Un));
+
+    quantPID = comp_quantile(null_PIDs(:,:,n), [UnX(n),UnY(n),Red(n),Syn(n)]');
+    disp(red_fun); disp(quantPID);
+end
+
+
+% exportgraphics(fig,"Results_null_model/Synthetic/Gaussian/max_un.pdf",'Resolution',300);
+
+% quantPID = comp_quantile(null_PIDs, [UnX,UnY,Red,Syn]');
+
+disp("end of execution");
+
+%% MAXIMAL SYNERGISTIC SYSTEM
+
+rng('default') % for reproducibility of random variables
+disp("begin run");
+
+S = 2; T = 1;
+UnX = NaN(1,3); UnY = NaN(1,3); Red = NaN(1,3); Syn = NaN(1,3);
+
+Sigma_s = [1+eps 0; 0 1+eps];
+Sigma_t = 2+eps;
+Sigma_cross = [1, -1];
+
+% or
+
+Sigma_s = [1+eps -1; -1 2+eps];
+Sigma_t = 1+eps;
+Sigma_cross = [0, 1];
+
+eps = 0.0000001; % original
+% Sigma_full = [1+eps 0 1; 0 1+eps -1; 1 -1 2+eps]; % original
+Sigma_full = [Sigma_s, Sigma_cross'; Sigma_cross,  Sigma_t]; 
+
+
+Sigma_s = [1 -0.98; -0.98, 1];
+Sigma_t = 1;
+Sigma_cross = [0.08, 0.08];
+
+
+Sigma_s = [1+eps, -1; -1, 2+eps];
+Sigma_t = 1+eps;
+Sigma_cross = [0, 1];
+Sigma_full = [Sigma_s, Sigma_cross'; Sigma_cross,  Sigma_t]; 
+
+det(Sigma_full), det(Sigma_s)
+chol(Sigma_s); chol(Sigma_full);
+
+MI = entropy(Sigma_s) + entropy(Sigma_t) - entropy(Sigma_full);
+
+% MMI
+[UnX(1), UnY(1), Red(1), Syn(1)] = PID_MMI_Gaussian(Sigma_full,S,T);
+% Idep
+[UnX(2), UnY(2), Red(2), Syn(2)] = PID_Idep_Gaussian(Sigma_full,S,T);
+% Iccs 
+[UnX(3), UnY(3), Red(3), Syn(3)] = PID_Iccs_Gaussian(Sigma_full,S,T);
+
+MI, UnX, UnY, Red, Syn
+return
+null_PIDs = MI_null_model_Gauss(MI,[],[],10000,"all");
+
+fig = figure('units','normalized','outerposition',[0 0 1 1]);
+for n=1:3
+    if n==1, red_fun="MMI";
+    elseif n==2, red_fun="Idep";
+    elseif n==3, red_fun="Iccs";
+    end
+
+%     null_Reds = null_PIDs(3,:,n);
+    null_Syns = null_PIDs(4,:,n);
+%     null_Uns = null_PIDs(1,:,n) + null_PIDs(2,:,n);
+
+    if n~=3, m=n; else, m=n+0.5; end
+    
+    subplot(2,2,m);
+    histogram(null_Syns, 20);
+    hold on
+    xline(Syn(n),'--', 'LineWidth', 2, 'Color', 'black');
+    xlabel('Synergy');
+    ylabel('Counts');
+    title("Synergy distribution for MI = "+num2str(MI)+" "+red_fun);
+    legend('Syn', "MAX = "+sprintf('%.2f',Syn(n)));
+
+    quantPID = comp_quantile(null_PIDs(:,:,n), [UnX(n),UnY(n),Red(n),Syn(n)]');
+    disp(red_fun); disp(quantPID);
+end
+
+
+% exportgraphics(fig,"Results_null_model/Synthetic/Gaussian/max_syn.pdf",'Resolution',300);
+
+% quantPID = comp_quantile(null_PIDs, [UnX,UnY,Red,Syn]');
+
+disp("end of execution");
+
+function H = entropy(Sigma)
+    
+    arg = det(2*pi*exp(1)*Sigma);    
+    H = 0.5*log(arg);
+
+end

@@ -1,0 +1,45 @@
+function [time_series, subject_info] = PsychMEGLoad(subject_info)
+
+PSIL=['231109_1','160312_2','190311_1','020311_50','081211_51','050312_1', ...
+      '020312_50','010312_1','240107_6','241111_2','020312_51','271108_3', ...
+      '021211_51','030507_1'];
+
+KET=['240107_6', '310713_51' ,'270407_1', '210813_51', '210813_52', ...
+    '280813_51', '280813_52', '110913_51', '021013_51' ,'301112_51', ...
+    '091013_51', '161013_51' ,'161013_52', '231013_51', '221112_50', ...
+    '171212_1' ,'181113_1', '040806_1', '041213_1'];
+
+LSD=['260614_1','010514_1','310714_1','040914_1','270613_1','010813_4', ...
+     '040914_2','290514_2','070814_2','090714_2','140514_1','140514_2', ...
+     '200814_1','230911_1','041213_1'];
+
+if subject_info.drug == "KET"
+    if subject_info.condition == "Placebo"
+        file = "../psychedelics_MEG_600Hz/"+KET(subject_info)+"_PLA.mat";
+    elseif subject_info.condition == "KET"
+        file = "../psychedelics_MEG_600Hz/"+KET(subject_info)+"_KET.mat";
+    end
+    data = load(file).dat;
+
+elseif subject_info.drug == "LSD"
+    if subject_info.condition == "Placebo"
+        file = "../psychedelics_MEG_600Hz/"+LSD(subject_info)+"_PLA.mat";
+    elseif subject_info.condition == "LSD"
+        file = "../psychedelics_MEG_600Hz/"+LSD(subject_info)+"_KET.mat";
+    end
+    data = load(file).dat;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+end

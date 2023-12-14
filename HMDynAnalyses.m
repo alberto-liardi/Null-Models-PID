@@ -1,0 +1,234 @@
+%% Human vs Monkey analyses 
+
+% load data
+subjects = {"Kin2", "George", "Su", "Chibi", 2, 4, 5, 8, 11, 12, 13, 15, 16};
+species = ['M', 'M', 'M', 'M', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H'];
+conditions = ["W", "S"];
+channels = 20;
+
+Oinfo_W = cell(1,2);    Oinfo_S = cell(1,2);
+CSER_W = cell(1,2);     CSER_S = cell(1,2);      
+p_hist_W = cell(1,2);   p_hist_S = cell(1,2);
+
+for sub = 1:length(subjects)
+
+    if sub>4 && (subjects{sub}==4 || subjects{sub}==5 || subjects{sub}==13)
+        channels = 16;
+    elseif sub>4 && subjects{sub}==16
+        channels = 12;
+    else
+        channels = 20;
+    end
+
+    for cond = 1:length(conditions)
+
+        path = createPath(species(sub), subjects{sub}, conditions(cond), channels);
+        
+        InfoDyn = readmatrix(path+"InfoDyn.txt");
+        InfoDyn_norm = readmatrix(path+"InfoDyn_Norm.txt");
+        
+        CSER = mean(InfoDyn(:,1:2));
+        p_hist = mean(InfoDyn(:,7:8));
+        Oinfo = mean(InfoDyn_norm(:,3:4));
+
+        if cond==1    
+            for p = 1:2
+                CSER_W{p}(sub) = CSER(p);
+                p_hist_W{p}(sub) = p_hist(p);
+                Oinfo_W{p}(sub) = Oinfo(p);
+            end
+        elseif cond==2
+            for p = 1:2
+                CSER_S{p}(sub) = CSER(p);
+                p_hist_S{p}(sub) = p_hist(p);
+                Oinfo_S{p}(sub) = Oinfo(p);
+            end
+        end
+
+    end
+end
+
+Delta_CSER = cell(1,2); Delta_O = cell(1,2); Delta_p_hist = cell(1,2);
+
+for p = 1:2
+%     Delta_CSER{p} = (CSER_W{p} - CSER_S{p})./abs(CSER_W{p} + CSER_S{p})*200;
+%     Delta_O{p} = (Oinfo_W{p} - Oinfo_S{p})./abs(Oinfo_W{p} + Oinfo_S{p})*200;
+%     Delta_p_hist{p} = (p_hist_W{p} - p_hist_S{p})./abs(p_hist_W{p} + p_hist_S{p})*200;
+
+    Delta_CSER{p} = CSER_W{p} - CSER_S{p};
+    Delta_O{p} = Oinfo_W{p} - Oinfo_S{p};
+    Delta_p_hist{p} = p_hist_W{p} - p_hist_S{p};
+end
+
+% finally do the plots
+
+% var(1) awake
+% HMViolinPlot_small(CSER_W{1}(1:4), Oinfo_W{1}(1:4), p_hist_W{1}(1:4), ...
+%                    CSER_W{1}(5:end), Oinfo_W{1}(5:end), p_hist_W{1}(5:end), ...
+%                    "Results/HMAnalyses/InfoDyn_W_var(1).png", ...
+%                    "Humans and monkeys Information Dynamics - Var(1) Awake", ...
+%                    ["CSER", "O information", "model order"]);
+
+% var(1) sleep/sedated
+% HMViolinPlot_small(CSER_S{1}(1:4), Oinfo_S{1}(1:4), p_hist_S{1}(1:4), ...
+%                    CSER_S{1}(5:end), Oinfo_S{1}(5:end), p_hist_S{1}(5:end), ...
+%                    "Results/HMAnalyses/InfoDyn_S_var(1).png", ...
+%                    "Humans and monkeys Information Dynamics - Var(1) Sleep/Sedated", ...
+%                    ["CSER", "O information", "model order"]);
+
+% var(p) awake
+% HMViolinPlot_small(CSER_W{2}(1:4), Oinfo_W{2}(1:4), p_hist_W{2}(1:4), ...
+%                    CSER_W{2}(5:end), Oinfo_W{2}(5:end), p_hist_W{2}(5:end), ...
+%                    "Results/HMAnalyses/InfoDyn_W_var(p).png", ...
+%                    "Humans and monkeys Information Dynamics - Var(p) Awake", ...
+%                    ["CSER", "O information", "model order"]);
+
+% var(p) sleep/sedated
+% HMViolinPlot_small(CSER_S{2}(1:4), Oinfo_S{2}(1:4), p_hist_S{2}(1:4), ...
+%                    CSER_S{2}(5:end), Oinfo_S{2}(5:end), p_hist_S{2}(5:end), ...
+%                    "Results/HMAnalyses/InfoDyn_S_var(p).png", ...
+%                    "Humans and monkeys Information Dynamics - Var(p) Sleep/Sedated", ...
+%                    ["CSER", "O information", "model order"]);
+
+% var(1) awake - sleep/sedated
+HMViolinPlot_small(Delta_CSER{1}(1:4), Delta_O{1}(1:4), Delta_p_hist{1}(1:4), ...
+                   Delta_CSER{1}(5:end), Delta_O{1}(5:end), Delta_p_hist{1}(5:end), ...
+                   "Results/HMAnalyses/InfoDyn_diff_var(1).png", ...
+                   "Humans and monkeys Information Dynamics - Var(1) W-S", ...
+                   ["CSER", "O-information", "p"]);
+
+% var(p) awake - sleep/sedated
+HMViolinPlot_small(Delta_CSER{2}(1:4), Delta_O{2}(1:4), Delta_p_hist{2}(1:4), ...
+                   Delta_CSER{2}(5:end), Delta_O{2}(5:end), Delta_p_hist{2}(5:end), ...
+                   "Results/HMAnalyses/InfoDyn_diff_var(p).png", ...
+                   "Humans and monkeys Information Dynamics - Var(p) W-S", ...
+                   ["CSER", "O-information", "p"]);
+
+%% Human vs Monkey analyses for Monkeys Sleep
+
+% load data
+subjects = {"George", "Chibi", 2, 4, 5, 8, 11, 12, 13, 15, 16};
+species = ['M', 'M', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H'];
+conditions = ["W", "S"];
+channels = 20;
+
+Oinfo_W = cell(1,2);    Oinfo_S = cell(1,2);
+CSER_W = cell(1,2);     CSER_S = cell(1,2);      
+p_hist_W = cell(1,2);   p_hist_S = cell(1,2);
+
+for sub = 1:length(subjects)
+
+    if sub>2 && (subjects{sub}==4 || subjects{sub}==5 || subjects{sub}==13)
+        channels = 16;
+    elseif sub>4 && subjects{sub}==16
+        channels = 12;
+    else
+        channels = 20;
+    end
+
+    for cond = 1:length(conditions)
+
+        path = createPath(species(sub), subjects{sub}, conditions(cond), channels);
+        
+        InfoDyn = readmatrix(path+"InfoDyn.txt");
+        InfoDyn_norm = readmatrix(path+"InfoDyn_Norm.txt");
+        
+        CSER = mean(InfoDyn(:,1:2));
+        p_hist = mean(InfoDyn(:,7:8));
+        Oinfo = mean(InfoDyn_norm(:,3:4));
+
+        if cond==1    
+            for p = 1:2
+                CSER_W{p}(sub) = CSER(p);
+                p_hist_W{p}(sub) = p_hist(p);
+                Oinfo_W{p}(sub) = Oinfo(p);
+            end
+        elseif cond==2
+            for p = 1:2
+                CSER_S{p}(sub) = CSER(p);
+                p_hist_S{p}(sub) = p_hist(p);
+                Oinfo_S{p}(sub) = Oinfo(p);
+            end
+        end
+
+    end
+end
+
+Delta_CSER = cell(1,2); Delta_O = cell(1,2); Delta_p_hist = cell(1,2);
+
+for p = 1:2
+    Delta_CSER{p} = CSER_W{p} - CSER_S{p};
+    Delta_O{p} = Oinfo_W{p} - Oinfo_S{p};
+    Delta_p_hist{p} = p_hist_W{p} - p_hist_S{p};
+end
+
+% finally do the plots
+
+% var(1) awake - sleep/sedated
+HMViolinPlot_small(Delta_CSER{1}(1:2), Delta_O{1}(1:2), Delta_p_hist{1}(1:2), ...
+                   Delta_CSER{1}(3:end), Delta_O{1}(3:end), Delta_p_hist{1}(3:end), ...
+                   "Results/HMAnalyses/InfoDyn_diff_var(1).png", ...
+                   "Humans and monkeys Information Dynamics - Var(1) W-S", ...
+                   ["CSER", "O-information", "p"]);
+
+% var(p) awake - sleep/sedated
+HMViolinPlot_small(Delta_CSER{2}(1:2), Delta_O{2}(1:2), Delta_p_hist{2}(1:2), ...
+                   Delta_CSER{2}(3:end), Delta_O{2}(3:end), Delta_p_hist{2}(3:end), ...
+                   "Results/HMAnalyses/InfoDyn_diff_var(p).png", ...
+                   "Humans and monkeys Information Dynamics - Var(p) W-S", ...
+                   ["CSER", "O-information", "p"]);
+
+%% O-info detailed analyses
+% var(p) awake - sleep/sedated
+HMViolinPlot_small(Oinfo_W{1}(1:4), Oinfo_S{1}(1:4), Delta_O{1}(1:4), ...
+                   Oinfo_W{1}(5:end), Oinfo_S{1}(5:end), Delta_O{1}(5:end), ...
+                   "Results/HMAnalyses/ODyn_var(1).png", ...
+                   "Humans and monkeys O information - Var(1)", ...
+                   ["W", "S", "W-S"]);
+
+HMViolinPlot_small(Oinfo_W{2}(1:4), Oinfo_S{2}(1:4), Delta_O{2}(1:4), ...
+                   Oinfo_W{2}(5:end), Oinfo_S{2}(5:end), Delta_O{2}(5:end), ...
+                   "Results/HMAnalyses/ODyn_var(p).png", ...
+                   "Humans and monkeys O information - Var(p)", ...
+                   ["W", "S", "W-S"]);
+
+
+function path = SleepcreatePath(spec, subj, con, chan)
+
+    % creating the name of the path
+    if spec == 'H'
+        pref = 'S';
+        name = sprintf('%01d',subj);
+    else
+        pref = '';  
+        name = subj;
+    end
+    
+    if con == 'S', state = 'Sleep';
+    else,    state = 'Awake'; end
+
+    path = strcat('Results/', pref, name, '_c', ...
+                  sprintf('%01d',chan), '/', state, '/');
+
+end
+
+function path = createPath(spec, subj, con, chan)
+
+    % creating the name of the path
+    if spec == 'H'
+        pref = 'S';
+        name = sprintf('%01d',subj);
+    else
+        pref = '';  
+        name = subj;
+    end
+    
+    if con == 'S' && spec == 'M', state = 'Sedated';
+    elseif con == 'S', state = 'Sleep';
+    else,    state = 'Awake'; 
+    end
+
+    path = strcat('Results/', pref, name, '_c', ...
+                  sprintf('%01d',chan), '/', state, '/');
+
+end
